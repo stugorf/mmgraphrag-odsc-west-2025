@@ -1,0 +1,2 @@
+model_checkpoint_path: "/Users/davidhughes/dev/mmgraphrag-odsc-aib2025/src/mmgraphrag_odsc_aib2025/tensorboard/model.ckpt"
+all_model_checkpoint_paths: "/Users/davidhughes/dev/mmgraphrag-odsc-aib2025/src/mmgraphrag_odsc_aib2025/tensorboard/model.ckpt"

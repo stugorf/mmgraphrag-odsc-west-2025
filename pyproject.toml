@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "mmgraphrag-odsc-east-2025"
+version = "0.1.0"
+description = "Multimodal GraphRAG (mmGraphRAG); Associative Search and Retrieval Only."
+authors = ["David Hughes <david@hyperdimensionalcomputing.ai>"]
+license = "MIT"
+readme = "README.md"
+packages = [
+    { include = "mmgraphrag_odsc_east_2025", from = "src" }
+]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+jupyterlab = "^4.3.5"
+pillow = "^11.1.0"
+baml-py = "^0.84.4"
+torch = "^2.6.0"
+transformers = "^4.48.2"
+tqdm = "^4.67.1"
+tensorboard = "^2.18.0"
+tensorflow = "^2.18.0"
+ipywidgets = "^8.1.5"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
