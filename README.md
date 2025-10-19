@@ -1,5 +1,5 @@
-# mmGraphRAG ODSC East 2025
-This repo is a companion to the mmGraphRAG presentation ODSC EAST 2025. Multimodal GraphRAG (mmGraphRAG) is the natural extension of GraphRAG which incorporates visual information into graph based retrieval.
+# mmGraphRAG ODSC West 2025
+This repo is a companion to the mmGraphRAG presentation ODSC West 2025. Multimodal GraphRAG (mmGraphRAG) is the natural extension of GraphRAG which incorporates visual information into graph based retrieval.
 
 __Contact Information__
 - Author, Presenter [David Hughes](mailto:david@hyperdimensionalcomputing.ai) 
@@ -24,7 +24,7 @@ __Contact Information__
    `poetry shell`
 6. Run `poetry show` to see installed dependencies. You may need to run `poetry install`.
 7. Change to the notebook directory
-    `cd src/mmgraphrag_odsc_east_2025/notebook/`
+    `cd src/mmgraphrag_odsc_West_2025/notebook/`
 8. Initialize BAML
    `baml-cli init`
 9.  Generate the BAML client
@@ -36,7 +36,7 @@ __Contact Information__
     ├── poetry.lock
     ├── pyproject.toml
     └── src
-        └── mmgraphrag_odsc_east_2025
+        └── mmgraphrag_odsc_West_2025
             ├── __init__.py
             ├── baml_client
             │   ├── __init__.py
