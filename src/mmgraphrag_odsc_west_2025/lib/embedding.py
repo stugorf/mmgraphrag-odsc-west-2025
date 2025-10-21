@@ -28,8 +28,8 @@ from transformers import CLIPProcessor, CLIPModel
 from PIL import Image
 
 # Local imports
-from mmgraphrag_odsc_aib2025.config import config
-from mmgraphrag_odsc_aib2025.utils.logger import setup_logger
+from mmgraphrag_odsc_west_2025.config import config
+from mmgraphrag_odsc_west_2025.utils.logger import setup_logger
 
 class SemanticEmbeddings():
     """Class for generating semantic embeddings from images and text using CLIP.

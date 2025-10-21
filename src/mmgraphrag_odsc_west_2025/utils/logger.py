@@ -1,6 +1,6 @@
 import sys
 import logging
-from mmgraphrag_odsc_aib2025.config import config
+from mmgraphrag_odsc_west_2025.config import config
 
 def setup_logger(name: str) -> logging.Logger:
     """Configure and return a logger instance.

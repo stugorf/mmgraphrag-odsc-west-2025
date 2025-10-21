@@ -37,9 +37,9 @@ from tensorflow.keras.utils import img_to_array
 from tqdm import tqdm
 
 # Local imports
-from mmgraphrag_odsc_aib2025.config import config
-from mmgraphrag_odsc_aib2025.lib.embedding import SemanticEmbeddings
-from mmgraphrag_odsc_aib2025.utils.logger import setup_logger
+from mmgraphrag_odsc_west_2025.config import config
+from mmgraphrag_odsc_west_2025.lib.embedding import SemanticEmbeddings
+from mmgraphrag_odsc_west_2025.utils.logger import setup_logger
 
 
 
@@ -50,7 +50,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["BAML_LOG"] = config.BAML_LOG
 
 # BAML imports
-import mmgraphrag_odsc_aib2025.baml_client as baml
+import mmgraphrag_odsc_west_2025.baml_client as baml
 
 
 
