@@ -21,7 +21,7 @@ class ImageAnalysis {
 }
 
 function ExtractImageFeatures(img: image) -> ImageFeatures {
-    client OllamaPhi4
+    client OllamaLLaVA
     prompt #"
       {{_.role("user")}}
       Extract features in this image: {{img}}
@@ -31,7 +31,7 @@ function ExtractImageFeatures(img: image) -> ImageFeatures {
 }
 
 function ExtractImageObjects(img: image) -> ImageObject[] {
-    client OllamaPhi4
+    client OllamaLLaVA
     prompt #"
       {{_.role("user")}}
       Extract objects in this image: {{img}}
@@ -41,7 +41,7 @@ function ExtractImageObjects(img: image) -> ImageObject[] {
 }
 
 function AnalyzeImage(img: image) -> ImageAnalysis {
-  client OllamaPhi4
+  client OllamaLLaVA
     prompt #"
       {{_.role("user")}}
       Extract the caption and features in this image: {{img}}
