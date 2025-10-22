@@ -1,3 +1,12 @@
+client<llm> ChatGPTAudioPreview {
+  provider "openai"
+  options {
+    model "gpt-4o-audio-preview"
+    api_key env.OPENAI_API_KEY
+    temperature 0.0
+  }
+}
+
 client<llm> OllamaGemma3_12b {
   provider "openai-generic"
   options {

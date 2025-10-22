@@ -47,6 +47,9 @@ class Config():
     SPRITE_SIZE: int = 100
     SPRITE_BG_COLOR: str = 'white'
     IMAGE_FORMAT: str = 'RGB'
+    
+    # Audio Processing
+    AUDIO_FORMAT: str = 'mp3'
 
 # Create global config instance
 try:
