@@ -28,10 +28,10 @@ from tqdm import tqdm
 import base64
 import soundfile as sf
 import numpy as np
-import tensorflow as tf
-from tensorboard.plugins import projector
 from PIL import Image
 from dotenv import load_dotenv
+
+# Note: TensorFlow removed as it's not needed for audio processing
 
 # Local imports
 from mmgraphrag_odsc_west_2025.config import config
@@ -39,14 +39,18 @@ from mmgraphrag_odsc_west_2025.utils.logger import setup_logger
 
 
 # Load environment variables from .env file
-load_dotenv()
+# Look for .env file in the src directory relative to this file
+env_path = Path(__file__).parent.parent.parent / ".env"
+load_dotenv(env_path)
 
 # Set OpenAI API key
 api_key = os.getenv("OPENAI_API_KEY")
 if api_key:
     os.environ["OPENAI_API_KEY"] = api_key
 else:
-    raise ValueError("OPENAI_API_KEY is not set in .env file")
+    # For demo purposes, set a placeholder if not found
+    print("Warning: OPENAI_API_KEY not found in .env file. Some audio processing features may not work.")
+    os.environ["OPENAI_API_KEY"] = "demo_key"
 
 # Set BAML Logging [error, warn, info, debug, trace, off]
 os.environ["BAML_LOG"] = config.BAML_LOG
@@ -131,31 +135,23 @@ class AudioProcessing:
 
     def process_audios(self, audio_dir: str, num_samples: int):
         """
-        Process audio files, extract analysis, and prepare TensorBoard files.
+        Process audio files and extract analysis using BAML.
 
-        This method processes a batch of audio files by extracting analysis using BAML,
-        and prepares files needed for TensorBoard visualization. It samples audio files from the
-        provided directory, processes them using BAML for analysis, and generates
-        sprite images and metadata files for TensorBoard.
+        This method processes a batch of audio files by extracting analysis using BAML.
+        It samples audio files from the provided directory and processes them for analysis.
 
         Args:
             audio_dir (str): Directory containing the audio files to process
             num_samples (int): Number of random audio files to sample and process
 
+        Returns:
+            int: Number of successfully processed audio files
+
         Raises:
-            ValueError: If no audio files are successfully processed or sprite image creation fails
+            ValueError: If no audio files are successfully processed
             Exception: If there are errors processing individual audio files
         """
         try:
-            # Define paths for tensorboard
-            tensorboard_dir = config.TENSORBOARD_LOG_DIR
-            vectors_path = os.path.join(tensorboard_dir, 'vectors.tsv')
-            metadata_path = os.path.join(tensorboard_dir, 'metadata.tsv')
-
-            # Create tensorboard directory
-            os.makedirs(tensorboard_dir, exist_ok=True)
-            self.logger.info(f"TensorBoard directory ready at {tensorboard_dir}")
-
             # Load audio files
             audio_files = list(Path(audio_dir).glob('*.mp3'))
             sampled_files = random.sample(audio_files, min(num_samples, len(audio_files)))
@@ -186,158 +182,10 @@ class AudioProcessing:
             if not successful_entries:
                 raise ValueError("No audio files were successfully processed")
 
-            # Create sprite image (for audio visualization)
-            sprite_paths = [entry['path'] for entry in successful_entries]
-            sprite_image, final_processed_paths = self.create_sprite_image(sprite_paths)
-            if not sprite_image or not final_processed_paths:
-                raise ValueError("Failed to create sprite image")
-
-            # Create mapping and sort entries
-            sprite_order = {path: idx for idx, path in enumerate(final_processed_paths)}
-            successful_entries.sort(key=lambda x: sprite_order[x['path']])
-            
-            # Build synchronized lists
-            final_vectors = []
-            final_metadata = []
-            
-            for entry in successful_entries:
-                # For audio, we'll create a simple vector representation
-                # This could be enhanced with actual audio embeddings
-                audio_vector = [0.0] * 512  # Placeholder vector
-                final_vectors.append(audio_vector)
-                metadata_row = [
-                    os.path.basename(entry['path']),  # Audio filename
-                    entry['analysis'],  # Analysis
-                ]
-                final_metadata.append(metadata_row)
-
-            # Write files
-            with open(vectors_path, 'w', newline='', encoding='utf-8') as f:
-                writer = csv.writer(f, delimiter='\t')
-                vectors_written = 0
-                for vector in final_vectors:
-                    writer.writerow(vector)
-                    vectors_written += 1
-                
-                self.logger.info(f"Wrote {vectors_written} vectors out of {len(successful_entries)} successful entries")
-                if vectors_written != len(successful_entries):
-                    raise ValueError(f"Mismatch in number of vectors written ({vectors_written}) vs successful entries ({len(successful_entries)})")
-
-            with open(metadata_path, 'w', newline='', encoding='utf-8') as f:
-                writer = csv.writer(f, delimiter='\t')
-                writer.writerow(['Audio', 'Analysis'])
-                for row in final_metadata:
-                    cleaned_analysis = ' '.join(row[1].replace('\n', ' ').split())
-                    writer.writerow([row[0], cleaned_analysis])
-
-            # Save sprite image
-            sprite_image.save(os.path.join(tensorboard_dir, 'sprite.png'))
-
-            # Save checkpoint properly
-            checkpoint_path = os.path.join(tensorboard_dir, 'model.ckpt')
-            
-            # Create a new graph and session to ensure clean state
-            graph = tf.Graph()
-            with graph.as_default():
-                # Convert to numpy array and ensure correct shape
-                embeddings_array = np.array(final_vectors)
-                
-                # Create the Variable with explicit shape
-                embedding_var = tf.Variable(
-                    embeddings_array,
-                    trainable=False,
-                    name='embedding'
-                )
-                
-                # Initialize saver
-                saver = tf.compat.v1.train.Saver([embedding_var])
-                
-                # Create session and initialize variables
-                with tf.compat.v1.Session() as sess:
-                    sess.run(tf.compat.v1.global_variables_initializer())
-                    # Save the checkpoint
-                    saver.save(sess, checkpoint_path)
-
-            # Configure projector
-            tensorboard_config = projector.ProjectorConfig()
-            embedding = tensorboard_config.embeddings.add()
-            embedding.tensor_name = "embedding"  # Must match the variable name above
-            embedding.metadata_path = os.path.basename(metadata_path)
-            embedding.sprite.image_path = 'sprite.png'
-            embedding.sprite.single_image_dim.extend([100, 100])
-            
-            projector.visualize_embeddings(tensorboard_dir, tensorboard_config)
-            
+            self.logger.info(f"Successfully processed {len(successful_entries)} audio files")
             return len(successful_entries)
 
         except Exception as e:
             self.logger.error(f"Error in process_audios: {e}")
             raise
 
-
-    def create_sprite_image(self, images_paths: List[str], sprite_size: int = config.SPRITE_SIZE) -> Tuple[Image.Image | None, List[str]]:
-        """Create a sprite image and return both the image and the order of processed paths.
-        
-        Creates a sprite image by combining multiple images into a single grid-like image,
-        with each input image resized and placed on a white background. The sprite image
-        is used for visualization in TensorBoard's Projector.
-
-        Args:
-            images_paths (List[str]): List of paths to images to include in sprite
-            sprite_size (int, optional): Size in pixels for each image in the sprite. 
-                Defaults to config.SPRITE_SIZE.
-
-        Returns:
-            Tuple[Image.Image, List[str]]: A tuple containing:
-                - The generated sprite image as a PIL Image
-                - List of successfully processed image paths in order of appearance
-                
-        Note:
-            Images that fail to process are replaced with blank white squares in the 
-            sprite but are not included in the returned list of successful paths.
-        """
-        if not images_paths:
-            return None, []
-        
-        # Calculate grid dimensions
-        num_images = len(images_paths)
-        grid_size = int(np.ceil(np.sqrt(num_images)))
-        
-        # Create blank sprite image
-        sprite = Image.new(config.IMAGE_FORMAT, 
-                         (grid_size * sprite_size, grid_size * sprite_size), 
-                         config.SPRITE_BG_COLOR)
-        
-        # Track successful placements and their order
-        successful_paths = []
-        
-        for idx, img_path in enumerate(images_paths):
-            try:
-                # Open and resize image
-                img = Image.open(img_path).convert(config.IMAGE_FORMAT)
-                img.thumbnail((sprite_size, sprite_size), Image.Resampling.LANCZOS)
-                
-                # Create white background
-                img_with_bg = Image.new(config.IMAGE_FORMAT, 
-                                      (sprite_size, sprite_size), 
-                                      config.SPRITE_BG_COLOR)
-                offset = ((sprite_size - img.size[0]) // 2, (sprite_size - img.size[1]) // 2)
-                img_with_bg.paste(img, offset)
-                
-                # Calculate position
-                row = idx // grid_size
-                col = idx % grid_size
-                
-                # Paste into sprite
-                sprite.paste(img_with_bg, (col * sprite_size, row * sprite_size))
-                successful_paths.append(img_path)
-                
-            except Exception as e:
-                self.logger.error(f"Error processing image for sprite: {img_path} - {e}")
-                # Create blank placeholder but don't add to successful paths
-                img_with_bg = Image.new(config.IMAGE_FORMAT, (sprite_size, sprite_size), 'white')
-                row = idx // grid_size
-                col = idx % grid_size
-                sprite.paste(img_with_bg, (col * sprite_size, row * sprite_size))
-        
-        return sprite, successful_paths

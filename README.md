@@ -6,9 +6,9 @@ __Contact Information__
 - Co-Presenter [Amy Hodler](mailto:amy.hodler@graphgeeks.org)
 
 ## Core Requirements
-- Python3.10
-- Poetry ->  Package management **This will be migrated to uv**
-  - [installation instructions](https://python-poetry.org/docs/)
+- Python3.10+
+- uv ->  Package management
+  - [installation instructions](https://docs.astral.sh/uv/getting-started/installation/)
 - Ollama -> Local language model hosting
   - [installation instructions](https://ollama.com/download)
 
@@ -20,9 +20,9 @@ __Contact Information__
    `git clone {{repo_path}}`
 4. Change directory to the new project directory. For example, if you cloned to your dev directory:
    `cd ~/dev/mmgrgraphrag`
-5. Start a Poetry shell. This will create a virtual environment and install any project dependencies. If you want to see what packages will be installed before running this command you can open the file _pyproject.toml_ to see what will be installed.
-   `poetry shell`
-6. Run `poetry show` to see installed dependencies. You may need to run `poetry install`.
+5. Install dependencies and create a virtual environment using uv. This will create a virtual environment and install any project dependencies. If you want to see what packages will be installed before running this command you can open the file _pyproject.toml_ to see what will be installed.
+   `uv sync`
+6. Run `uv pip list` to see installed dependencies. You can also run `uv tree` to see the dependency tree.
 7. Change to the notebook directory
     `cd src/mmgraphrag_odsc_west_2025/notebook/`
 8. Initialize BAML
@@ -33,7 +33,7 @@ __Contact Information__
     ```
     .
     ├── README.md
-    ├── poetry.lock
+    ├── uv.lock
     ├── pyproject.toml
     └── src
         └── mmgraphrag_odsc_west_2025
@@ -88,7 +88,7 @@ __Contact Information__
 
     17 directories, 60 files
     ```
-1.  Start jupyter lab
-   `jupyter lab`
+1.  Start jupyter lab using uv
+   `uv run jupyter lab`
 2.  Jupyter Lab should open a browser and present its UI with the notebook named _mmgraphrag.ipynb_ being visibile on the left panel. If not, open a browser and navigate to `localhost:8888/lab/`
 3.  Follow the instructions in the notebook

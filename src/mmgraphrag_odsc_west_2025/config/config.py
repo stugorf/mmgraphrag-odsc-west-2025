@@ -33,6 +33,9 @@ class Config():
     # BAML settings
     BAML_LOG: str = "off"
     
+    # Ollama settings
+    OLLAMA_URL: str = "http://localhost:11434"
+    
     # CLIP settings
     CLIP_DIM: int = 512
     CLIP_MODEL: str = "openai/clip-vit-base-patch32"
