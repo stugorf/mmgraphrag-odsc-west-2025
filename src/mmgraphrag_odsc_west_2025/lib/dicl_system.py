@@ -20,6 +20,7 @@ import numpy as np
 import pandas as pd
 import lancedb
 import time
+import yaml
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 from tqdm import tqdm
@@ -34,9 +35,19 @@ from mmgraphrag_odsc_west_2025.config import config
 # Set environment variables before BAML import
 os.environ["BAML_LOG"] = config.BAML_LOG
 
-# BAML imports
-import mmgraphrag_odsc_west_2025.baml_client as baml
-from mmgraphrag_odsc_west_2025.baml_client.types import ExampleGenerationInput, DICLInput
+# BAML imports (optional for seed data mode)
+try:
+    import mmgraphrag_odsc_west_2025.baml_client as baml
+    from mmgraphrag_odsc_west_2025.baml_client.types import ExampleGenerationInput as BAMLExampleGenerationInput, DICLInput as BAMLDICLInput, Example as BAMLExample
+    # Test if BAML actually works by trying to access the client
+    _ = baml.b
+    BAML_AVAILABLE = True
+except (ImportError, AttributeError, Exception):
+    BAML_AVAILABLE = False
+    baml = None
+    BAMLExampleGenerationInput = None
+    BAMLDICLInput = None
+    BAMLExample = None
 
 
 def setup_logger(name):
@@ -156,12 +167,11 @@ class DICLSystem:
             self.logger.error(f"Error getting embedding: {e}")
             raise
     
-    def _generate_examples(self, topic: str, num_examples: int = 10) -> List[Example]:
-        """Generate examples for a given topic using BAML.
+    def _load_seed_data(self, seed_data_path: str = "seed_data.yml") -> List[Example]:
+        """Load examples from seed data YAML file.
         
         Args:
-            topic: Topic to generate examples about
-            num_examples: Number of examples to generate
+            seed_data_path: Path to the seed data YAML file
             
         Returns:
             List of Example objects
@@ -169,48 +179,198 @@ class DICLSystem:
         examples = []
         
         try:
-            # Generate all examples for this topic in a single BAML call
-            self.logger.info(f"Generating {num_examples} {topic} examples in one call...")
+            with open(seed_data_path, 'r', encoding='utf-8') as f:
+                data = yaml.safe_load(f)
             
-            input = ExampleGenerationInput(
-                topic=topic,
-                num_examples=num_examples
-            )
-            result = baml.b.GenerateExamples(input)
+            # Process structured output examples
+            if 'structured_output' in data:
+                structured_examples = self._parse_yaml_examples(data['structured_output'], 'structured')
+                examples.extend(structured_examples)
+                self.logger.info(f"Loaded {len(structured_examples)} structured examples")
             
-            if result.examples and len(result.examples) > 0:
-                self.logger.info(f"Generated {len(result.examples)} examples for {topic}")
-                
-                # Process each generated example
-                for i, qa in enumerate(tqdm(result.examples, desc=f"Processing {topic} examples", ncols=80, ascii=True)):
-                    question = qa.input
-                    answer = qa.output
-                    
-                    # Get embedding for the question
-                    self.logger.debug(f"Getting embedding for example {i+1}/{len(result.examples)}")
-                    embedding = self._get_embedding(question)
-                    
-                    example = Example(
-                        id=f"{topic}_{i}",
-                        vector=embedding,
-                        input=question,
-                        output=answer
-                    )
-                    examples.append(example)
-            else:
-                self.logger.warning(f"No examples generated for topic {topic}")
-                
+            # Process pattern learning examples
+            if 'pattern_learning' in data:
+                pattern_examples = self._parse_yaml_examples(data['pattern_learning'], 'pattern')
+                examples.extend(pattern_examples)
+                self.logger.info(f"Loaded {len(pattern_examples)} pattern examples")
+            
+            # Process voice & style examples
+            if 'voice_style' in data:
+                voice_examples = self._parse_yaml_examples(data['voice_style'], 'voice')
+                examples.extend(voice_examples)
+                self.logger.info(f"Loaded {len(voice_examples)} voice examples")
+            
+            self.logger.info(f"Total loaded {len(examples)} examples from seed data")
+            
         except Exception as e:
-            self.logger.error(f"Error generating examples for {topic}: {e}")
+            self.logger.error(f"Error loading seed data: {e}")
             raise
         
         return examples
     
-    def populate_database(self, db_path: Optional[str] = None):
-        """Create the LanceDB database with examples.
+    def _parse_yaml_examples(self, examples_data: List[Dict[str, str]], example_type: str) -> List[Example]:
+        """Parse examples from YAML data.
+        
+        Args:
+            examples_data: List of dictionaries with 'input' and 'output' keys
+            example_type: Type of examples (structured, pattern, voice)
+            
+        Returns:
+            List of Example objects
+        """
+        examples = []
+        
+        for i, example_data in enumerate(examples_data):
+            try:
+                input_text = example_data['input']
+                output_text = example_data['output']
+                
+                # Get embedding for the input
+                embedding = self._get_embedding(input_text)
+                
+                example = Example(
+                    id=f"{example_type}_{i}",
+                    vector=embedding,
+                    input=input_text,
+                    output=output_text
+                )
+                examples.append(example)
+                
+            except KeyError as e:
+                self.logger.warning(f"Missing key in example {i}: {e}")
+                continue
+            except Exception as e:
+                self.logger.warning(f"Error processing example {i}: {e}")
+                continue
+        
+        return examples
+    
+    def _parse_structured_examples(self, section_content: str) -> List[Example]:
+        """Parse structured output examples from seed data."""
+        examples = []
+        lines = section_content.split('\n')
+        
+        current_input = None
+        current_output = None
+        example_count = 0
+        
+        for line in lines:
+            line = line.strip()
+            if line.startswith('Input:'):
+                current_input = line.replace('Input:', '').strip()
+            elif line.startswith('Output:'):
+                current_output = line.replace('Output:', '').strip()
+                
+                if current_input and current_output:
+                    # Get embedding for the input
+                    embedding = self._get_embedding(current_input)
+                    
+                    example = Example(
+                        id=f"structured_{example_count}",
+                        vector=embedding,
+                        input=current_input,
+                        output=current_output
+                    )
+                    examples.append(example)
+                    example_count += 1
+                    current_input = None
+                    current_output = None
+        
+        return examples
+    
+    def _parse_pattern_examples(self, section_content: str) -> List[Example]:
+        """Parse pattern learning examples from seed data."""
+        examples = []
+        lines = section_content.split('\n')
+        
+        current_input = None
+        current_output_lines = []
+        example_count = 0
+        in_output = False
+        
+        for line in lines:
+            line = line.strip()
+            if line.startswith('Input:'):
+                current_input = line.replace('Input:', '').strip()
+                in_output = False
+            elif line.startswith('Output:'):
+                in_output = True
+                current_output_lines = []
+            elif in_output and line and not line.startswith('Example'):
+                current_output_lines.append(line)
+            elif line.startswith('Example') and current_input and current_output_lines:
+                # Process the completed example
+                current_output = '\n'.join(current_output_lines)
+                
+                # Get embedding for the input
+                embedding = self._get_embedding(current_input)
+                
+                example = Example(
+                    id=f"pattern_{example_count}",
+                    vector=embedding,
+                    input=current_input,
+                    output=current_output
+                )
+                examples.append(example)
+                example_count += 1
+                current_input = None
+                current_output_lines = []
+                in_output = False
+        
+        # Handle the last example if it doesn't end with "Example"
+        if current_input and current_output_lines:
+            current_output = '\n'.join(current_output_lines)
+            embedding = self._get_embedding(current_input)
+            
+            example = Example(
+                id=f"pattern_{example_count}",
+                vector=embedding,
+                input=current_input,
+                output=current_output
+            )
+            examples.append(example)
+        
+        return examples
+    
+    def _parse_voice_examples(self, section_content: str) -> List[Example]:
+        """Parse voice & style examples from seed data."""
+        examples = []
+        lines = section_content.split('\n')
+        
+        current_input = None
+        current_output = None
+        example_count = 0
+        
+        for line in lines:
+            line = line.strip()
+            if line.startswith('Input:'):
+                current_input = line.replace('Input:', '').strip()
+            elif line.startswith('Output:'):
+                current_output = line.replace('Output:', '').strip()
+                
+                if current_input and current_output:
+                    # Get embedding for the input
+                    embedding = self._get_embedding(current_input)
+                    
+                    example = Example(
+                        id=f"voice_{example_count}",
+                        vector=embedding,
+                        input=current_input,
+                        output=current_output
+                    )
+                    examples.append(example)
+                    example_count += 1
+                    current_input = None
+                    current_output = None
+        
+        return examples
+    
+    def populate_database(self, db_path: Optional[str] = None, seed_data_path: str = "seed_data.yml"):
+        """Create the LanceDB database with examples from seed data.
         
         Args:
             db_path: Path to the LanceDB database directory (optional)
+            seed_data_path: Path to the seed data YAML file
         """
         if db_path:
             self.db_path = db_path
@@ -221,34 +381,17 @@ class DICLSystem:
         try:
             # Use context manager for proper connection management
             with lancedb_connection(self.db_path) as db:
-                # Check if table already exists
+                # Check if table already exists and drop it to repopulate
                 if "examples" in db.table_names():
-                    self.logger.info("Examples table already exists. Skipping creation.")
-                    return
+                    self.logger.info("Examples table exists. Dropping and recreating...")
+                    db.drop_table("examples")
                 
-                # Generate examples for different topics
-                all_examples = []
+                # Load examples from seed data
+                self.logger.info("Loading examples from seed data...")
+                all_examples = self._load_seed_data(seed_data_path)
                 
-                # Bananas (15 examples)
-                self.logger.info("Generating banana examples...")
-                banana_examples = self._generate_examples("bananas", 15)
-                all_examples.extend(banana_examples)
-                
-                # Small delay between topic calls to prevent resource contention
-                time.sleep(2)  # Increased delay
-                
-                # Technology (20 examples)
-                self.logger.info("Generating technology examples...")
-                tech_examples = self._generate_examples("technology", 20)
-                all_examples.extend(tech_examples)
-                
-                # Small delay between topic calls to prevent resource contention
-                time.sleep(2)  # Increased delay
-                
-                # Functional programming (15 examples)
-                self.logger.info("Generating functional programming examples...")
-                fp_examples = self._generate_examples("functional programming, lambda calculus", 15)
-                all_examples.extend(fp_examples)
+                if not all_examples:
+                    raise ValueError("No examples loaded from seed data")
                 
                 # Convert to pandas DataFrame for LanceDB
                 data = []
@@ -374,18 +517,36 @@ class DICLSystem:
                     "examples": []
                 }
             
-            # Use BAML to generate answer with context
-            input = DICLInput(
-                query=query,
-                examples=similar_examples
-            )
-            result = baml.b.DynamicInContextLearning(input)
-            
-            return {
-                "answer": result.answer,
-                "reasoning": result.reasoning,
-                "examples": similar_examples
-            }
+            # Use BAML to generate answer with context (if available)
+            if BAML_AVAILABLE:
+                # Convert our Example objects to BAML Example format as dictionaries
+                baml_examples = []
+                for ex in similar_examples:
+                    baml_example = {
+                        "id": ex.id,
+                        "input": ex.input,
+                        "output": ex.output
+                    }
+                    baml_examples.append(baml_example)
+                
+                input_data = {
+                    "query": query,
+                    "examples": baml_examples
+                }
+                result = baml.b.DynamicInContextLearning(input_data)
+                
+                return {
+                    "answer": result.answer,
+                    "reasoning": result.reasoning,
+                    "examples": similar_examples
+                }
+            else:
+                # Fallback response when BAML is not available
+                return {
+                    "answer": f"Based on the similar examples found, here are the relevant patterns: {', '.join([ex.output for ex in similar_examples[:2]])}",
+                    "reasoning": f"Found {len(similar_examples)} similar examples in the database. Using seed data examples for context.",
+                    "examples": similar_examples
+                }
             
         except Exception as e:
             self.logger.error(f"Error processing query: {e}")

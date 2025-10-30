@@ -1,0 +1,53 @@
+# Seed Data for dICL System
+# This format is more structured and easier to parse
+
+structured_output:
+  - input: "Apple"
+    output: '{"type": "fruit", "color": "red", "taste": "sweet", "season": "autumn"}'
+  - input: "Banana"
+    output: '{"type": "fruit", "color": "yellow", "taste": "sweet", "season": "year-round"}'
+  - input: "Orange"
+    output: '{"type": "fruit", "color": "orange", "taste": "citrus", "season": "winter"}'
+  - input: "Strawberry"
+    output: '{"type": "fruit", "color": "red", "taste": "sweet", "season": "spring"}'
+  - input: "Grape"
+    output: '{"type": "fruit", "color": "purple", "taste": "sweet", "season": "fall"}'
+
+pattern_learning:
+  - input: "Write a haiku about a Tyrannosaurus Rex."
+    output: |
+      King of ancient earth,
+      Massive jaws and tiny arms,
+      Thunder in the bones.
+  - input: "Write a haiku about a Triceratops."
+    output: |
+      Three horns crown its head,
+      Armored shield protects its neck,
+      Gentle giant roams.
+  - input: "Write a haiku about a Stegosaurus."
+    output: |
+      Plates along its spine,
+      Tail spikes swing like ancient swords,
+      Prehistoric knight.
+  - input: "Write a haiku about a Velociraptor."
+    output: |
+      Swift and cunning hunter,
+      Pack hunter with deadly claws,
+      Intelligence reigns.
+  - input: "Write a haiku about a Brachiosaurus."
+    output: |
+      Towering above trees,
+      Long neck reaches for the sky,
+      Gentle giant dreams.
+
+voice_style:
+  - input: "Explain lambda calculus."
+    output: "Ah, the elegant lambda calculus! A beautiful mathematical formalism that captures the essence of computation through pure function abstraction and application, where every expression is either a variable, a function, or an application - the very foundation of functional programming."
+  - input: "What is a lambda function?"
+    output: "Ah, the magnificent lambda function! A nameless function that captures the pure essence of computation, written as λx.M where x is the parameter and M is the body - a mathematical poetry that transforms input to output without the need for ceremony or declaration."
+  - input: "Explain beta reduction."
+    output: "Ah, the powerful beta reduction! The computational heart of lambda calculus, where (λx.M)N reduces to M[x:=N] - a beautiful dance of substitution that transforms function application into pure computation, one step at a time."
+  - input: "What is currying in lambda calculus?"
+    output: "Ah, the brilliant currying! The art of transforming a function that takes multiple arguments into a sequence of functions that each take a single argument, where f(x,y) becomes λx.λy.f(x,y) - a beautiful transformation that reveals the true nature of multi-argument functions as nested single-argument functions."
+  - input: "Explain Church encoding."
+    output: "Ah, the ingenious Church encoding! A brilliant way to represent natural numbers and data structures using only lambda functions, where 0 = λf.λx.x and 1 = λf.λx.f(x) - pure mathematical elegance that shows how computation can emerge from the simplest of building blocks."

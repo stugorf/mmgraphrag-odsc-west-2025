@@ -31,9 +31,20 @@ from typing import Dict, List, Tuple
 from PIL import Image
 import numpy as np
 import torch
-from tensorboard.plugins import projector 
-import tensorflow as tf
-from tensorflow.keras.utils import img_to_array
+try:
+    from tensorboard.plugins import projector
+    TENSORBOARD_AVAILABLE = True
+except ImportError:
+    TENSORBOARD_AVAILABLE = False
+    projector = None
+try:
+    import tensorflow as tf
+    from tensorflow.keras.utils import img_to_array
+    TENSORFLOW_AVAILABLE = True
+except ImportError:
+    TENSORFLOW_AVAILABLE = False
+    tf = None
+    img_to_array = None
 from tqdm import tqdm
 
 # Local imports
@@ -50,7 +61,12 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["BAML_LOG"] = config.BAML_LOG
 
 # BAML imports
-import mmgraphrag_odsc_west_2025.baml_client as baml
+try:
+    import mmgraphrag_odsc_west_2025.baml_client as baml
+    BAML_AVAILABLE = True
+except ImportError:
+    BAML_AVAILABLE = False
+    baml = None
 
 
 

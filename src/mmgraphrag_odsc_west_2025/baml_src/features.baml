@@ -73,7 +73,7 @@ test test_image_analysis {
   functions [AnalyzeImage]
   args {
     img {
-      file "../images/e_COCO_val2014_000000000757.jpg"
+      file "../images/b_COCO_val2014_000000001153.jpg"
    }
   }
 }
